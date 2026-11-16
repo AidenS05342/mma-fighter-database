@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<!--
+  Browser test for the real script.js + fighters-data.js.
+  Open in a browser, or run headless (prints results into the dumped DOM):
+    msedge --headless --disable-gpu --virtual-time-budget=10000 --dump-dom tests/site_test.html
+-->
+<html lang="en">
+<head><meta charset="UTF-8" /><title>Fight Ledger Site Tests</title></head>
+<body>
+  <!-- Minimal copy of the element ids script.js uses from index.html -->
+  <nav class="nav"><button id="navToggle" aria-expanded="false"></button>
+    <ul id="navLinks"><li><a href="#home" class="nav-link">Home</a></li><li><a href="#compare" class="nav-link">Compare</a></li></ul></nav>
+  <section id="home"><dl id="heroStats"><dd></dd><dd></dd><dd></dd><dd></dd></dl><span id="dataNote"></span></section>
+  <div id="featuredGrid"></div>
+  <input id="searchInput" /><select id="sortSelect">
+    <option value="wins">w</option><option value="winPct">p</option><option value="finishes">f</option><option value="name">n</option></select>
+  <div id="divisionChips"></div><p id="resultsCount"></p><div id="directoryGrid"></div>
+  <div id="emptyState" hidden><button id="resetFilters"></button></div>
+  <section id="compare"><select id="compareA"></select><button id="swapBtn"></button><select id="compareB"></select><div id="compareBoard"></div></section>
+  <div id="profileModal" hidden><button class="modal-close" data-close></button><div id="modalBody"></div></div>
+  <div id="toast"></div>
+  <pre id="results">TESTS DID NOT RUN</pre>
+
+  <script>
+    window.__errors = [];
+    window.addEventListener("error", (e) => window.__errors.push(String(e.message)));
+    // Headless runs have no IntersectionObserver issues, but stub scrollIntoView for safety
+    Element.prototype.scrollIntoView = function () {};
+  </script>
+  <script src="../fighters-data.js"></script>
+  <script src="../script.js"></script>
+  <script>
+    const out = [];
+    let failures = 0;
+    const check = (name, cond, detail = "") => {
+      if (!cond) failures++;
+      out.push(`${cond ? "PASS" : "FAIL"}  ${name}${!cond && detail ? "  -> " + detail : ""}`);
+    };
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const cards = () => [...document.querySelectorAll("#directoryGrid .fighter-card")];
+    const cardNames = () => cards().map((c) => c.querySelector(".card-name").textContent);
+    const badText = (html) => (html.match(/\b(undefined|NaN|null)\b|\[object/g) || []);
+    const typeSearch = async (q) => {
+      const el = document.getElementById("searchInput");
+      el.value = q;
+      el.dispatchEvent(new Event("input"));
+      await wait(300);
+    };
+
+    async function run() {
+      const raw = window.FIGHTER_DATA;
+      check("fighters-data.js loaded", !!raw && Array.isArray(raw.fighters));
+      check("all fighters mapped", FIGHTERS.length === raw.fighters.length && FIGHTERS.length > 0, `${FIGHTERS.length}`);
+      check("unique ids", new Set(FIGHTERS.map((f) => f.id)).size === FIGHTERS.length);
+      check("every fighter has name + record",
+        FIGHTERS.every((f) => f.name && Number.isInteger(f.wins) && Number.isInteger(f.losses) && Number.isInteger(f.draws)));
+
+      // Data integrity: values in the UI come straight from the generated file
+      const jj = byId.get("jon-jones");
+      check("Jon Jones record from UFC.com", jj && recordStr(jj) === "28-1-0", jj && recordStr(jj));
+      check("unverified win methods are null, not invented",
+        FIGHTERS.filter((f) => !f.methodsVerified).every((f) => f.koWins === null && f.subWins === null && f.decWins === null));
+      check("verified win methods add up",
+        FIGHTERS.filter((f) => f.methodsVerified).every((f) => f.koWins + f.subWins + f.decWins === f.wins));
+
+      // Initial render
+      check("directory shows every fighter", cards().length === FIGHTERS.length, `${cards().length}`);
+      check("featured fighters rendered",
+        document.querySelectorAll("#featuredGrid .fighter-card").length === FIGHTERS.filter((f) => f.featured).length);
+      check("data note filled", /UFC\.com/.test(document.getElementById("dataNote").textContent));
+
+      // Search
+      await typeSearch("bones");
+      check("search by nickname", cardNames().join() === "Jon Jones", cardNames().join());
+      await typeSearch("PEREIRA");
+      check("search is case-insensitive", cardNames().includes("Alex Pereira"), cardNames().join());
+      await typeSearch("brazil");
+      check("search by country", cards().length > 0 &&
+        getFilteredFighters().every((f) => [f.nationality, f.birthplace, f.style].some((v) => v && /brazil/i.test(v))));
+      await typeSearch("zzqqxx");
+      check("no-match shows empty state", cards().length === 0 && !document.getElementById("emptyState").hidden);
+      document.getElementById("resetFilters").click();
+      await wait(50);
+      check("reset restores all fighters", cards().length === FIGHTERS.length && document.getElementById("emptyState").hidden);
+
+      // Division filter
+      const chip = [...document.querySelectorAll("#divisionChips .chip")].find((c) => c.dataset.division === "Heavyweight");
+      check("Heavyweight chip exists", !!chip);
+      if (chip) {
+        chip.click();
+        const expected = FIGHTERS.filter((f) => f.division === "Heavyweight").length;
+        check("division filter", cards().length === expected &&
+          getFilteredFighters().every((f) => f.division === "Heavyweight"), `${cards().length}/${expected}`);
+        check("chip count matches", chip.querySelector(".count").textContent === String(expected));
+        await typeSearch("jones");
+        check("search + division combine", cardNames().join() === "Jon Jones", cardNames().join());
+        document.getElementById("resetFilters").click();
+      }
+      const chipTotal = [...document.querySelectorAll("#divisionChips .chip")]
+        .filter((c) => c.dataset.division !== "All").reduce((s, c) => s + Number(c.querySelector(".count").textContent), 0);
+      check("division chips cover every fighter", chipTotal === FIGHTERS.length, `${chipTotal}`);
+
+      // Sorting
+      const sortSel = document.getElementById("sortSelect");
+      const sortBy = (v) => { sortSel.value = v; sortSel.dispatchEvent(new Event("change")); return getFilteredFighters(); };
+      let list = sortBy("wins");
+      check("sort by wins", list.every((f, i) => i === 0 || list[i - 1].wins >= f.wins));
+      list = sortBy("name");
+      check("sort by name", list.every((f, i) => i === 0 || list[i - 1].name.localeCompare(f.name) <= 0));
+      list = sortBy("finishes");
+      const firstUnverified = list.findIndex((f) => !f.methodsVerified);
+      check("sort by finishes puts N/A last",
+        firstUnverified === -1 || list.slice(firstUnverified).every((f) => !f.methodsVerified));
+      sortBy("wins");
+
+      // Profiles: open every fighter, check for leaked undefined/NaN/null text
+      const profileProblems = [];
+      for (const f of FIGHTERS) {
+        openProfile(f.id);
+        const html = document.getElementById("modalBody").innerHTML;
+        const bad = badText(html);
+        if (bad.length) profileProblems.push(`${f.id}: ${bad.join(",")}`);
+        if (!html.includes(f.sourceUrl)) profileProblems.push(`${f.id}: no source link`);
+        closeProfile();
+      }
+      check("all profiles render without undefined/NaN/null", profileProblems.length === 0, profileProblems.join("; "));
+      openProfile("chuck-liddell");
+      const lid = document.getElementById("modalBody").innerHTML;
+      check("missing values shown as N/A (Liddell height/methods)", (lid.match(/N\/A/g) || []).length >= 4);
+      closeProfile();
+
+      // Comparison
+      check("default comparison renders", document.querySelectorAll("#compareBoard .c-row").length === COMPARE_METRICS.length);
+      const A = document.getElementById("compareA"), B = document.getElementById("compareB");
+      check("pickers list every fighter", A.querySelectorAll("option[value]:not([value=''])").length === FIGHTERS.length);
+      A.value = "jon-jones"; A.dispatchEvent(new Event("change"));
+      B.value = "jack-della-maddalena"; B.dispatchEvent(new Event("change"));
+      const board = document.getElementById("compareBoard");
+      check("comparison picks up selected fighters", board.textContent.includes("Jon Jones") && board.textContent.includes("Jack Della Maddalena"));
+      const naRows = [...board.querySelectorAll(".c-row")].filter((r) => /N\/A/.test(r.textContent));
+      check("N/A rows are never scored", naRows.length > 0 && naRows.every((r) => !r.querySelector(".lead")), `${naRows.length} N/A rows`);
+      const { edgeA, edgeB } = scoreCompare(byId.get("jon-jones"), byId.get("jack-della-maddalena"));
+      const tallies = [...board.querySelectorAll(".tally")].map((t) => parseInt(t.textContent, 10));
+      check("tallies match lead highlights",
+        tallies[0] === edgeA && tallies[1] === edgeB &&
+        board.querySelectorAll(".c-val.left.lead").length === edgeA && board.querySelectorAll(".c-val.right.lead").length === edgeB);
+      check("lower-is-better metrics (Losses)", (() => {
+        const r = scoreCompare(byId.get("jon-jones"), byId.get("conor-mcgregor")).rows.find((x) => x.m.label === "Losses");
+        return r.va < r.vb ? r.leadA && !r.leadB : r.va > r.vb ? r.leadB && !r.leadA : !r.leadA && !r.leadB;
+      })());
+      document.getElementById("swapBtn").click();
+      check("swap fighters", A.value === "jack-della-maddalena" && B.value === "jon-jones");
+      B.value = "jack-della-maddalena"; B.dispatchEvent(new Event("change"));
+      check("same fighter twice is rejected", /different/.test(board.textContent));
+
+      // Compare button on a card
+      state.compareA = null; state.compareB = null;
+      document.querySelector('#directoryGrid [data-action="compare"][data-id="alex-pereira"]').click();
+      document.querySelector('#directoryGrid [data-action="compare"][data-id="jon-jones"]').click();
+      check("card Compare buttons fill both slots", A.value === "alex-pereira" && B.value === "jon-jones");
+
+      // Every pair of fighters compares without broken output
+      const pairProblems = [];
+      for (const a of FIGHTERS) for (const b of FIGHTERS) {
+        if (a === b) continue;
+        state.compareA = a.id; state.compareB = b.id; renderCompare();
+        const bad = badText(board.innerHTML);
+        if (bad.length) pairProblems.push(`${a.id} vs ${b.id}`);
+      }
+      check(`all ${FIGHTERS.length * (FIGHTERS.length - 1)} comparisons render cleanly`, pairProblems.length === 0, pairProblems.slice(0, 5).join("; "));
+
+      // Whole page
+      const rendered = ["heroStats", "dataNote", "featuredGrid", "divisionChips", "resultsCount", "directoryGrid", "compareA", "compareBoard"]
+        .map((id) => document.getElementById(id).innerHTML).join("");
+      check("no undefined/NaN/null in rendered page", badText(rendered).length === 0, badText(rendered).join(","));
+      check("no JavaScript errors", window.__errors.length === 0, window.__errors.join("; "));
+
+      out.push("", failures ? `FAILED: ${failures} check(s)` : `ALL ${out.length} CHECKS PASSED`);
+      document.getElementById("results").textContent = out.join("\n");
+    }
+    document.addEventListener("DOMContentLoaded", () => setTimeout(() => run().catch((e) => {
+      document.getElementById("results").textContent = "TEST CRASH: " + e + "\n" + e.stack + "\n\n" + out.join("\n");
+    }), 0));
+  </script>
+</body>
+</html>

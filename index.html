@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Fight Ledger — an interactive MMA fighter database with searchable profiles, division filters, and side-by-side fighter comparisons. Data from UFC.com athlete profiles and the UFC Record Book." />
+  <title>Fight Ledger | MMA Fighter Database</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- ============ NAVIGATION ============ -->
+  <header class="site-header" id="top">
+    <nav class="nav container" aria-label="Primary">
+      <a href="#home" class="brand" aria-label="Fight Ledger home">
+        <span class="brand-mark" aria-hidden="true">FL</span>
+        <span class="brand-text">Fight<span>Ledger</span></span>
+      </a>
+
+      <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="navLinks" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+      </button>
+
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#home" class="nav-link active">Home</a></li>
+        <li><a href="#directory" class="nav-link">Fighters</a></li>
+        <li><a href="#compare" class="nav-link">Compare</a></li>
+        <li><a href="#about" class="nav-link">About</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main id="main">
+    <!-- ============ HERO / HOME ============ -->
+    <section class="hero" id="home">
+      <div class="hero-bg" aria-hidden="true"></div>
+      <div class="container hero-inner">
+        <p class="eyebrow"><span class="dot"></span> Combat Sports Analytics</p>
+        <h1 class="hero-title">The MMA<br /><span>Fighter Database</span></h1>
+        <p class="hero-lead">
+          Explore fighter profiles, break down how they win, and put any two
+          competitors head-to-head. Built for fans who want the numbers behind the fight.
+        </p>
+        <div class="hero-actions">
+          <a href="#directory" class="btn btn-primary">Browse Fighters</a>
+          <a href="#compare" class="btn btn-ghost">Compare Fighters</a>
+        </div>
+
+        <dl class="hero-stats" id="heroStats">
+          <div><dt>Fighters</dt><dd data-count="0">0</dd></div>
+          <div><dt>Divisions</dt><dd data-count="0">0</dd></div>
+          <div><dt>Total Wins</dt><dd data-count="0">0</dd></div>
+          <div><dt>Finishes</dt><dd data-count="0">0</dd></div>
+        </dl>
+        <p class="sample-note">
+          <span class="badge badge-sample">UFC.com Data</span>
+          <span id="dataNote">Real fighter data from UFC.com athlete profiles and the UFC Record Book.</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ INTRO ============ -->
+    <section class="section intro" aria-labelledby="introTitle">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Introduction</p>
+          <h2 id="introTitle" class="section-title">Every fighter. Every finish. One ledger.</h2>
+          <p class="section-sub">
+            Fight Ledger organizes fighter data the way analysts look at it: records, finish methods,
+            striking output, and grappling efficiency, all searchable and comparable.
+          </p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+            </div>
+            <h3>Search &amp; Filter</h3>
+            <p>Find fighters instantly by name, nickname, or nationality, then narrow down by weight class.</p>
+          </article>
+          <article class="feature">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+            </div>
+            <h3>Win Breakdown</h3>
+            <p>See exactly how each fighter wins: KO/TKO, submission, or decision, with visual breakdowns.</p>
+          </article>
+          <article class="feature">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/></svg>
+            </div>
+            <h3>Head-to-Head</h3>
+            <p>Line up any two fighters side by side and see who holds the statistical edge in each category.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FEATURED ============ -->
+    <section class="section featured" aria-labelledby="featuredTitle">
+      <div class="container">
+        <div class="section-head section-head-row">
+          <div>
+            <p class="eyebrow">Spotlight</p>
+            <h2 id="featuredTitle" class="section-title">Featured Fighters</h2>
+          </div>
+          <a href="#directory" class="link-arrow">View all fighters <span aria-hidden="true">&rarr;</span></a>
+        </div>
+        <div class="card-grid" id="featuredGrid"></div>
+      </div>
+    </section>
+
+    <!-- ============ DIRECTORY ============ -->
+    <section class="section directory" id="directory" aria-labelledby="directoryTitle">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Directory</p>
+          <h2 id="directoryTitle" class="section-title">Fighter Directory</h2>
+          <p class="section-sub">Search the roster and filter by division. Select a card to open the full profile.</p>
+        </div>
+
+        <div class="toolbar">
+          <div class="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+            <label for="searchInput" class="sr-only">Search fighters</label>
+            <input type="search" id="searchInput" placeholder="Search by name, nickname, or country…" autocomplete="off" />
+          </div>
+          <div class="sort">
+            <label for="sortSelect">Sort by</label>
+            <select id="sortSelect">
+              <option value="wins">Most wins</option>
+              <option value="winPct">Win percentage</option>
+              <option value="finishes">Most finishes</option>
+              <option value="name">Name (A–Z)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="chips" id="divisionChips" role="group" aria-label="Filter by weight class"></div>
+
+        <p class="results-count" id="resultsCount" aria-live="polite"></p>
+        <div class="card-grid" id="directoryGrid"></div>
+        <div class="empty-state" id="emptyState" hidden>
+          <p class="empty-title">No fighters match your search.</p>
+          <p>Try a different name or reset the filters.</p>
+          <button class="btn btn-ghost" id="resetFilters" type="button">Reset filters</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ COMPARE ============ -->
+    <section class="section compare" id="compare" aria-labelledby="compareTitle">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Head-to-Head</p>
+          <h2 id="compareTitle" class="section-title">Compare Fighters</h2>
+          <p class="section-sub">Pick two fighters to see a side-by-side breakdown. The leader in each category is highlighted in red.</p>
+        </div>
+
+        <div class="compare-pickers">
+          <div class="picker">
+            <label for="compareA">Fighter A</label>
+            <select id="compareA"></select>
+          </div>
+          <button class="swap-btn" id="swapBtn" type="button" aria-label="Swap fighters" title="Swap fighters">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>
+          </button>
+          <div class="picker">
+            <label for="compareB">Fighter B</label>
+            <select id="compareB"></select>
+          </div>
+        </div>
+
+        <div class="compare-board" id="compareBoard" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- ============ ABOUT ============ -->
+    <section class="section about" id="about" aria-labelledby="aboutTitle">
+      <div class="container about-inner">
+        <div>
+          <p class="eyebrow">About</p>
+          <h2 id="aboutTitle" class="section-title">About This Project</h2>
+          <p>
+            Fight Ledger is a static, front-end demonstration of a combat sports analytics
+            interface. It runs entirely in the browser with HTML, CSS, and vanilla JavaScript.
+            It has no servers, APIs, or tracking.
+          </p>
+        </div>
+        <div class="notice">
+          <span class="badge badge-sample">Data Notice</span>
+          <p>
+            <strong>Fighter data comes from official
+            <a href="https://www.ufc.com/athletes/all" target="_blank" rel="noopener noreferrer">UFC.com athlete profiles</a>
+            and the <a href="https://statleaders.ufc.com/" target="_blank" rel="noopener noreferrer">UFC Record Book</a>.</strong>
+            Records and win methods cover each fighter's full professional career; striking and grappling
+            figures cover UFC bouts only. Nothing is estimated: a value UFC.com does not list is shown as N/A.
+            Refresh the data with <code>python -I tools/update_fighters.py</code>.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <a href="#home" class="brand brand-small">
+        <span class="brand-mark" aria-hidden="true">FL</span>
+        <span class="brand-text">Fight<span>Ledger</span></span>
+      </a>
+      <p>Data sourced from UFC.com. Fan project, not affiliated with or endorsed by the UFC.</p>
+      <a href="#top" class="link-arrow">Back to top <span aria-hidden="true">&uarr;</span></a>
+    </div>
+  </footer>
+
+  <!-- ============ PROFILE MODAL ============ -->
+  <div class="modal" id="profileModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modalName">
+      <button class="modal-close" type="button" aria-label="Close profile" data-close>&times;</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- ============ TOAST ============ -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="fighters-data.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
